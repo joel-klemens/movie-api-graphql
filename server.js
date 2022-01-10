@@ -32,7 +32,28 @@ const MovieType = new GraphQLObjectType({
     fields: () => ({
         id: { type: GraphQLNonNull(GraphQLInt) },
         name: { type: GraphQLNonNull(GraphQLString) },
-        directorId: { type: GraphQLNonNull(GraphQLInt) }
+        directorId: { type: GraphQLNonNull(GraphQLInt) },
+        director: {
+            type: DirectorType,
+            resolve: (movie) => {
+                return directors.find(director => director.id === movie.directorId)
+            }
+        }
+    })
+})
+
+const DirectorType = new GraphQLObjectType({
+    name: 'Director',
+    description: 'This represents a movie director.',
+    fields: () => ({
+        id: { type: GraphQLNonNull(GraphQLInt) },
+        name: { type: GraphQLNonNull(GraphQLString) },
+        movies: { 
+            type: GraphQLList(MovieType),
+            resolve: (director) => {
+                return movies.filter(movie => movie.directorId === director.id)
+            }
+        }
     })
 })
 
@@ -44,12 +65,66 @@ const RootQueryType = new GraphQLObjectType({
             type: new GraphQLList(MovieType),
             description: 'List of ALL Movies',
             resolve: () => movies
+        },
+        movie: {
+            type: MovieType,
+            description: 'A single movie',
+            args: {
+                id: { type: GraphQLInt }
+            },
+            resolve: (parent, args) => movies.find(movie => movie.id === args.id)
+        },
+        directors: {
+            type: new GraphQLList(DirectorType),
+            description: 'List of ALL Directors',
+            resolve: () => directors
+        },
+        director: {
+            type: DirectorType,
+            description: 'A single Director',
+            args: {
+                id: { type: GraphQLInt }
+            },
+            resolve: (parent, args) => directors.find(director => director.id === args.id)
+        }
+    })
+})
+
+const RootMutationType = new GraphQLObjectType({
+    name: 'Mutation',
+    description: 'Root Mutation',
+    fields: () => ({
+        addMovie: {
+            type: MovieType,
+            description: 'Add a Movie',
+            args: {
+                name: { type: GraphQLNonNull(GraphQLString) },
+                directorId: { type: GraphQLNonNull(GraphQLInt) }
+            },
+            resolve: (parent, args) => {
+                const movie = { id: movies.length + 1, name: args.name, directorId: args.directorId }
+                movies.push(movie)
+                return movie
+            }
+        },
+        addDirector: {
+            type: DirectorType,
+            description: 'Add a Director',
+            args: {
+                name: { type: GraphQLNonNull(GraphQLString) }
+            },
+            resolve: (parent, args) => {
+                const director = { id: directors.length + 1, name: args.name }
+                directors.push(director)
+                return director
+            }
         }
     })
 })
 
 const schema = new GraphQLSchema({
-    query: RootQueryType
+    query: RootQueryType,
+    mutation: RootMutationType
 })
 
 app.use('/graphql', expressGraphQL({
